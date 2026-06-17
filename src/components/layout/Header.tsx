@@ -43,14 +43,14 @@ export default function Header({ activeTab, onTabChange }: HeaderProps) {
           Automawow!
         </span>
       </div>
-      <nav className="flex items-center gap-0.5">
+      <nav className="flex items-center gap-0.5 overflow-x-auto scrollbar-none py-1">
         {tabs.map((tab) => {
           const active = tab.id === activeTab;
           return (
             <button
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors duration-100 ${
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors duration-100 flex-shrink-0 ${
                 active
                   ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)] font-medium'
                   : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]'

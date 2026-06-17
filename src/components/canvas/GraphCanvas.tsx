@@ -57,6 +57,9 @@ export default function GraphCanvas({
     onCanvasMouseDown,
     onCanvasMouseMove,
     onCanvasMouseUp,
+    onCanvasTouchStart,
+    onCanvasTouchMove,
+    onCanvasTouchEnd,
     resetTransform,
     zoomIn,
     zoomOut,
@@ -97,6 +100,26 @@ export default function GraphCanvas({
       }
     },
     [activeTool, getSVGPoint, positions],
+  );
+
+  const getSVGTouchPoint = useCallback(
+    (e: React.TouchEvent) => {
+      const rect = svgRef.current!.getBoundingClientRect();
+      const touch = e.touches[0];
+      return svgPoint(touch.clientX, touch.clientY, rect);
+    },
+    [svgPoint],
+  );
+
+  const handleStateTouchStart = useCallback(
+    (id: string, e: React.TouchEvent) => {
+      if (activeTool === 'select') {
+        const pt = getSVGTouchPoint(e);
+        const pos = positions.get(id)!;
+        dragging.current = { id, offX: pt.x - pos.x, offY: pt.y - pos.y };
+      }
+    },
+    [activeTool, getSVGTouchPoint, positions],
   );
 
   const handleStateClick = useCallback(
@@ -162,13 +185,38 @@ export default function GraphCanvas({
         });
       }
     },
-    [onCanvasMouseMove, getSVGPoint, dispatch],
+    [onCanvasMouseMove, getSVGPoint, dispatch, activeTool],
   );
 
   const handleMouseUp = useCallback(() => {
     dragging.current = null;
     onCanvasMouseUp();
   }, [onCanvasMouseUp]);
+
+  const handleTouchMove = useCallback(
+    (e: React.TouchEvent) => {
+      onCanvasTouchMove(e);
+      if (activeTool === 'pan') return;
+      if (dragging.current && e.touches.length === 1) {
+        const pt = getSVGTouchPoint(e);
+        dispatch({
+          type: 'UPDATE_POSITION',
+          state: dragging.current.id,
+          position: {
+            x: pt.x - dragging.current.offX,
+            y: pt.y - dragging.current.offY,
+          },
+        });
+        if (e.cancelable) e.preventDefault();
+      }
+    },
+    [onCanvasTouchMove, getSVGTouchPoint, dispatch, activeTool],
+  );
+
+  const handleTouchEnd = useCallback(() => {
+    dragging.current = null;
+    onCanvasTouchEnd();
+  }, [onCanvasTouchEnd]);
 
   // Group transitions by (from,to) pair for bundling
   type EdgeGroup = { from: string; to: string; symbols: string[] };
@@ -238,6 +286,21 @@ export default function GraphCanvas({
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onTouchStart={(e) => {
+          onFocus?.();
+          onCanvasTouchStart(e);
+          if (activeTool === 'addState' && e.touches.length === 1) {
+            const rect = svgRef.current!.getBoundingClientRect();
+            const touch = e.touches[0];
+            const { x, y } = svgPoint(touch.clientX, touch.clientY, rect);
+            let name = `q${dfa.states.length}`;
+            while (dfa.states.includes(name)) name = `q${parseInt(name.slice(1)) + 1}`;
+            dispatch({ type: 'ADD_STATE', name, position: { x, y } });
+          }
+        }}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
       >
         <defs>
           <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
@@ -298,6 +361,7 @@ export default function GraphCanvas({
                 isSelected={selection.type === 'state' && selection.id === state}
                 isActive={activeStates.includes(state)}
                 onMouseDown={handleStateMouseDown}
+                onTouchStart={handleStateTouchStart}
                 onClick={handleStateClick}
                 onDoubleClick={handleStateDoubleClick}
               />

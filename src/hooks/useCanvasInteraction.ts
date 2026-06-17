@@ -54,6 +54,46 @@ export function useCanvasInteraction() {
     setTransform((t) => ({ ...t, scale: Math.max(ZOOM_MIN, t.scale / ZOOM_STEP) }));
   }, []);
 
+  const lastTouchDist = useRef<number | null>(null);
+
+  const onCanvasTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      isPanning.current = true;
+      lastPan.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      lastTouchDist.current = null;
+    } else if (e.touches.length === 2) {
+      isPanning.current = false;
+      lastTouchDist.current = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+    }
+  }, []);
+
+  const onCanvasTouchMove = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 1 && isPanning.current) {
+      const dx = e.touches[0].clientX - lastPan.current.x;
+      const dy = e.touches[0].clientY - lastPan.current.y;
+      lastPan.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      setTransform((t) => ({ ...t, x: t.x + dx, y: t.y + dy }));
+    } else if (e.touches.length === 2 && lastTouchDist.current !== null) {
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      if (dist > 10) {
+        const ratio = dist / lastTouchDist.current;
+        lastTouchDist.current = dist;
+        setTransform((t) => ({ ...t, scale: Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, t.scale * ratio)) }));
+      }
+    }
+  }, []);
+
+  const onCanvasTouchEnd = useCallback(() => {
+    isPanning.current = false;
+    lastTouchDist.current = null;
+  }, []);
+
   const svgPoint = useCallback(
     (clientX: number, clientY: number, svgRect: DOMRect): { x: number; y: number } => ({
       x: (clientX - svgRect.left - transform.x) / transform.scale,
@@ -69,6 +109,9 @@ export function useCanvasInteraction() {
     onCanvasMouseDown,
     onCanvasMouseMove,
     onCanvasMouseUp,
+    onCanvasTouchStart,
+    onCanvasTouchMove,
+    onCanvasTouchEnd,
     resetTransform,
     zoomIn,
     zoomOut,

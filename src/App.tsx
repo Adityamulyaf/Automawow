@@ -26,6 +26,13 @@ function AppInner() {
   const isDragging = useRef(false);
   const dragStartX = useRef(0);
   const dragStartWidth = useRef(DEFAULT_PANEL);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const editorLeft = useEditor();
   const editorRight = useEditor();
@@ -113,63 +120,89 @@ function AppInner() {
   return (
     <div className="flex flex-col h-screen">
       <Header activeTab={activeTab} onTabChange={handleTabChange} />
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
         <Toolbar activeTool={currentEditor.activeTool} onToolChange={currentEditor.selectTool} />
-        <main className="flex flex-1 overflow-hidden">
+        <main className="flex flex-col md:flex-row flex-1 overflow-hidden">
           {activeTab === 'equivalence' ? (
-            <div className="flex flex-1 overflow-hidden divide-x divide-[var(--color-border)]">
-              {/* Left Canvas (DFA 1) */}
-              <div className="flex flex-1 flex-col relative overflow-hidden h-full">
-                <div className="absolute top-2 left-4 z-20 pointer-events-none">
-                  <span className="px-2 py-1 bg-white/90 backdrop-blur-sm border border-[var(--color-border)] rounded text-xs font-semibold text-[var(--color-text-secondary)] shadow-sm">
-                    DFA 1 (Kiri)
-                  </span>
-                </div>
-                <GraphCanvas
-                  dfa={dfa}
-                  positions={positions}
-                  isActive={activeCanvas === 'dfa'}
-                  onFocus={() => dispatch({ type: 'SET_ACTIVE_CANVAS', canvas: 'dfa' })}
-                  showFocusRing={true}
-                  activeTool={editorLeft.activeTool}
-                  selection={editorLeft.selection}
-                  onSelectState={editorLeft.selectState}
-                  onSelectTransition={editorLeft.selectTransition}
-                  onClearSelection={editorLeft.clearSelection}
-                  activeStates={activeStates}
-                  transitionDraftFrom={editorLeft.transitionDraft?.fromState ?? null}
-                  onTransitionDraftStart={editorLeft.startTransitionDraft}
-                  onTransitionDraftComplete={(from, to) =>
-                    handleTransitionComplete(from, to, editorLeft.clearSelection)
-                  }
-                />
+            <div className="flex flex-1 flex-col overflow-hidden">
+              {/* Mobile Toggle for Equivalence Canvases */}
+              <div className="flex md:hidden border-b border-[var(--color-border)] bg-white p-1.5 gap-1 flex-shrink-0">
+                <button
+                  onClick={() => dispatch({ type: 'SET_ACTIVE_CANVAS', canvas: 'dfa' })}
+                  className={`flex-1 py-1.5 text-xs font-semibold rounded transition-colors ${
+                    activeCanvas === 'dfa'
+                      ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)]'
+                      : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]'
+                  }`}
+                >
+                  DFA 1 (Kiri)
+                </button>
+                <button
+                  onClick={() => dispatch({ type: 'SET_ACTIVE_CANVAS', canvas: 'dfa2' })}
+                  className={`flex-1 py-1.5 text-xs font-semibold rounded transition-colors ${
+                    activeCanvas === 'dfa2'
+                      ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)]'
+                      : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]'
+                  }`}
+                >
+                  DFA 2 (Kanan)
+                </button>
               </div>
 
-              {/* Right Canvas (DFA 2) */}
-              <div className="flex flex-1 flex-col relative overflow-hidden h-full">
-                <div className="absolute top-2 left-4 z-20 pointer-events-none">
-                  <span className="px-2 py-1 bg-white/90 backdrop-blur-sm border border-[var(--color-border)] rounded text-xs font-semibold text-[var(--color-text-secondary)] shadow-sm">
-                    DFA 2 (Kanan)
-                  </span>
+              <div className="flex flex-1 overflow-hidden divide-x divide-[var(--color-border)]">
+                {/* Left Canvas (DFA 1) */}
+                <div className={`flex-1 flex-col relative overflow-hidden h-full ${activeCanvas === 'dfa' ? 'flex' : 'hidden md:flex'}`}>
+                  <div className="absolute top-2 left-4 z-20 pointer-events-none">
+                    <span className="px-2 py-1 bg-white/90 backdrop-blur-sm border border-[var(--color-border)] rounded text-xs font-semibold text-[var(--color-text-secondary)] shadow-sm">
+                      DFA 1 (Kiri)
+                    </span>
+                  </div>
+                  <GraphCanvas
+                    dfa={dfa}
+                    positions={positions}
+                    isActive={activeCanvas === 'dfa'}
+                    onFocus={() => dispatch({ type: 'SET_ACTIVE_CANVAS', canvas: 'dfa' })}
+                    showFocusRing={true}
+                    activeTool={editorLeft.activeTool}
+                    selection={editorLeft.selection}
+                    onSelectState={editorLeft.selectState}
+                    onSelectTransition={editorLeft.selectTransition}
+                    onClearSelection={editorLeft.clearSelection}
+                    activeStates={activeStates}
+                    transitionDraftFrom={editorLeft.transitionDraft?.fromState ?? null}
+                    onTransitionDraftStart={editorLeft.startTransitionDraft}
+                    onTransitionDraftComplete={(from, to) =>
+                      handleTransitionComplete(from, to, editorLeft.clearSelection)
+                    }
+                  />
                 </div>
-                <GraphCanvas
-                  dfa={dfa2}
-                  positions={positions2}
-                  isActive={activeCanvas === 'dfa2'}
-                  onFocus={() => dispatch({ type: 'SET_ACTIVE_CANVAS', canvas: 'dfa2' })}
-                  showFocusRing={true}
-                  activeTool={editorRight.activeTool}
-                  selection={editorRight.selection}
-                  onSelectState={editorRight.selectState}
-                  onSelectTransition={editorRight.selectTransition}
-                  onClearSelection={editorRight.clearSelection}
-                  activeStates={activeStates}
-                  transitionDraftFrom={editorRight.transitionDraft?.fromState ?? null}
-                  onTransitionDraftStart={editorRight.startTransitionDraft}
-                  onTransitionDraftComplete={(from, to) =>
-                    handleTransitionComplete(from, to, editorRight.clearSelection)
-                  }
-                />
+
+                {/* Right Canvas (DFA 2) */}
+                <div className={`flex-1 flex-col relative overflow-hidden h-full ${activeCanvas === 'dfa2' ? 'flex' : 'hidden md:flex'}`}>
+                  <div className="absolute top-2 left-4 z-20 pointer-events-none">
+                    <span className="px-2 py-1 bg-white/90 backdrop-blur-sm border border-[var(--color-border)] rounded text-xs font-semibold text-[var(--color-text-secondary)] shadow-sm">
+                      DFA 2 (Kanan)
+                    </span>
+                  </div>
+                  <GraphCanvas
+                    dfa={dfa2}
+                    positions={positions2}
+                    isActive={activeCanvas === 'dfa2'}
+                    onFocus={() => dispatch({ type: 'SET_ACTIVE_CANVAS', canvas: 'dfa2' })}
+                    showFocusRing={true}
+                    activeTool={editorRight.activeTool}
+                    selection={editorRight.selection}
+                    onSelectState={editorRight.selectState}
+                    onSelectTransition={editorRight.selectTransition}
+                    onClearSelection={editorRight.clearSelection}
+                    activeStates={activeStates}
+                    transitionDraftFrom={editorRight.transitionDraft?.fromState ?? null}
+                    onTransitionDraftStart={editorRight.startTransitionDraft}
+                    onTransitionDraftComplete={(from, to) =>
+                      handleTransitionComplete(from, to, editorRight.clearSelection)
+                    }
+                  />
+                </div>
               </div>
             </div>
           ) : (
@@ -191,7 +224,7 @@ function AppInner() {
           {/* Drag handle */}
           <div
             onMouseDown={onDividerMouseDown}
-            className="flex-shrink-0 flex items-center justify-center w-1.5 bg-transparent hover:bg-[var(--color-border)] transition-colors duration-100 group"
+            className="hidden md:flex flex-shrink-0 flex items-center justify-center w-1.5 bg-transparent hover:bg-[var(--color-border)] transition-colors duration-100 group"
             style={{ cursor: 'col-resize', userSelect: 'none' }}
             title="Drag to resize panel"
           >
@@ -199,8 +232,8 @@ function AppInner() {
           </div>
 
           <aside
-            className="overflow-y-auto bg-white border-l border-[var(--color-border)] flex-shrink-0"
-            style={{ width: panelWidth }}
+            className="overflow-y-auto bg-white border-t md:border-t-0 md:border-l border-[var(--color-border)] flex-shrink-0 w-full md:w-auto"
+            style={isMobile ? { height: '35vh' } : { width: panelWidth }}
           >
             {rightPanel()}
           </aside>

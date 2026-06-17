@@ -12,6 +12,7 @@ interface StateNodeProps {
   isSelected: boolean;
   isActive: boolean;
   onMouseDown: (id: string, e: React.MouseEvent) => void;
+  onTouchStart?: (id: string, e: React.TouchEvent) => void;
   onClick: (id: string, e: React.MouseEvent) => void;
   onDoubleClick: (id: string) => void;
 }
@@ -23,6 +24,7 @@ export default function StateNode({
   isSelected,
   isActive,
   onMouseDown,
+  onTouchStart,
   onClick,
   onDoubleClick,
 }: StateNodeProps) {
@@ -32,6 +34,10 @@ export default function StateNode({
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => { e.stopPropagation(); onMouseDown(id, e); },
     [id, onMouseDown],
+  );
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent) => { e.stopPropagation(); onTouchStart?.(id, e); },
+    [id, onTouchStart],
   );
   const handleClick = useCallback(
     (e: React.MouseEvent) => { e.stopPropagation(); onClick(id, e); },
@@ -60,6 +66,7 @@ export default function StateNode({
     <g
       className={isActive ? 'state-active' : ''}
       onMouseDown={handleMouseDown}
+      onTouchStart={handleTouchStart}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
       onMouseEnter={() => setHovered(true)}
