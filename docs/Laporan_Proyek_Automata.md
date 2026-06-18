@@ -181,31 +181,101 @@ Penggambaran grafis kanvas pada [GraphCanvas.tsx](file:///c:/Users/ACER/OneDrive
 ## BAB 4: DEMO PROGRAM & ANALISIS KASUS
 
 ### 4.1 Studi Kasus 1: Konversi Regex ke NFA
-* **Input Regex:** `a|b*`
-* **Langkah Konversi Program:**
-  1. Tokenizer mendeteksi token `CHAR(a)`, `UNION(|)`, `CHAR(b)`, dan `STAR(*)`.
-  2. Notasi postfix yang dihasilkan adalah `a b * |`.
-  3. Fragmen literal `a` dibuat (state $s_0 \rightarrow s_1$).
-  4. Fragmen Kleene star `b*` dibuat (state $s_2 \rightarrow s_3$ dengan loop internal dan bypass $\epsilon$).
-  5. Operator union menggabungkan kedua fragmen tersebut dengan melahirkan state awal baru $s_4$ dan state akhir baru $s_5$.
-* **Hasil Visual:** Aplikasi secara otomatis memosisikan node menggunakan koordinat dinamis agar tidak saling tumpang tindih pada layar kanvas.
+Pada studi kasus ini, diuji konversi ekspresi reguler yang kompleks dan sering digunakan dalam teori komputasi:
+* **Input Regex:** `(a|b)*abb`
+* **Langkah Konversi Thompson secara Teknis:**
+  1. **Tokenisasi & Postfix:** Regex diubah menjadi notasi postfix: `a b | * a . b . b .` (dengan `.` menyatakan konkatenasi).
+  2. **Fragmen `a|b` (Union):** Menghasilkan fragmen dengan state awal baru yang bertransisi $\epsilon$ ke state awal `a` dan `b`, lalu state akhirnya bertransisi $\epsilon$ ke state tujuan bersama.
+  3. **Fragmen `(a|b)*` (Kleene Star):** Ditambahkan transisi loopback $\epsilon$ dari state akhir kembali ke awal, serta bypass langsung dari state mulai baru ke state akhir baru.
+  4. **Konkatenasi dengan `abb`:** Fragmen star dihubungkan secara sekuensial dengan transisi karakter `a`, `b`, dan `b` ke state penerima akhir.
 
-### 4.2 Studi Kasus 2: Konversi NFA ke DFA & Minimisasi
-* **Input NFA:** NFA dengan transisi $\epsilon$ hasil dari konversi regex `a|b*`.
-* **Proses Subset Construction:**
-  * $\epsilon\text{-closure}(\text{startState})$ menghasilkan subset awal DFA.
-  * Proses iterasi menghasilkan tabel transisi DFA baru dengan state-state hasil penggabungan subset NFA.
-* **Proses Minimisasi:**
-  * State DFA yang redundan dimasukkan ke algoritma Hopcroft.
-  * Aplikasi mereduksi jumlah state secara efisien dan menghasilkan DFA minimal.
-  * Panel kontrol [MinimizePanel.tsx](file:///c:/Users/ACER/OneDrive/Dokumen/Automawow/src/components/panels/MinimizePanel.tsx) menyediakan tombol satu-klik untuk langsung menggambar DFA minimal hasil optimasi ke dalam kanvas aktif.
+Tabel transisi NFA hasil konversi yang digambarkan di kanvas visual adalah sebagai berikut:
 
-### 4.3 Studi Kasus 3: Pengujian Ekuivalensi DFA (Split-Screen)
-* **Skenario:** Menguji apakah DFA 1 (yang menerima regex `a(a|b)*`) ekuivalen dengan DFA 2 (yang dibuat secara manual dengan struktur berbeda namun menerima pola string yang sama).
-* **Eksekusi:**
-  1. Pengguna membuka panel ekuivalensi [EquivalencePanel.tsx](file:///c:/Users/ACER/OneDrive/Dokumen/Automawow/src/components/panels/EquivalencePanel.tsx).
-  2. Aplikasi membagi layar menjadi dua kanvas.
-  3. Setelah tombol *Compare* ditekan, algoritma pada `dfaEquivalence.ts` berjalan dan memunculkan notasi pop-up visual (Custom React Modal) yang menyatakan **"DFA 1 is Equivalent to DFA 2"** atau **"DFA 1 is NOT Equivalent to DFA 2"** secara akurat.
+| State Asal | Input `a` | Input `b` | Input `ε` |
+|---|---|---|---|
+| $s_0$ (Start) | - | - | $\{s_1, s_7\}$ |
+| $s_1$ | - | - | $\{s_2, s_4\}$ |
+| $s_2$ | $\{s_3\}$ | - | - |
+| $s_3$ | - | - | $\{s_6\}$ |
+| $s_4$ | - | $\{s_5\}$ | - |
+| $s_5$ | - | - | $\{s_6\}$ |
+| $s_6$ | - | - | $\{s_1, s_7\}$ |
+| $s_7$ | $\{s_8\}$ | - | - |
+| $s_8$ | - | $\{s_9\}$ | - |
+| $s_9$ | - | $\{s_{10}\}$ (Accept) | - |
+
+---
+
+### 4.2 Studi Kasus 2: Konversi NFA ke DFA (Subset Construction)
+Menggunakan NFA hasil konversi dari regex `(a|b)*abb` di atas, program mengeksekusi algoritma *Subset Construction* untuk membentuk DFA ekuivalen.
+
+**Langkah Perhitungan Subset & $\epsilon$-closure:**
+1. State Awal DFA ($A$): $\epsilon\text{-closure}(s_0) = \{s_0, s_1, s_2, s_4, s_7\}$
+2. Transisi dari $A$ dengan input `a`:
+   * $\text{move}(A, a) = \{s_3, s_8\}$
+   * $B = \epsilon\text{-closure}(\{s_3, s_8\}) = \{s_3, s_6, s_1, s_2, s_4, s_7, s_8, s_0\}$
+3. Transisi dari $A$ dengan input `b`:
+   * $\text{move}(A, b) = \{s_5\}$
+   * $C = \epsilon\text{-closure}(\{s_5\}) = \{s_5, s_6, s_1, s_2, s_4, s_7, s_0\}$
+
+Melalui iterasi lengkap, didapatkan himpunan state DFA baru:
+* **$A$** $= \{s_0, s_1, s_2, s_4, s_7\}$
+* **$B$** $= \{s_0, s_1, s_2, s_3, s_4, s_6, s_7, s_8\}$
+* **$C$** $= \{s_0, s_1, s_2, s_4, s_5, s_6, s_7\}$
+* **$D$** $= \{s_0, s_1, s_2, s_4, s_5, s_6, s_7, s_9\}$ (mengandung $s_9$ - Accept State)
+* **$E$** $= \{s_0, s_1, s_2, s_4, s_5, s_6, s_7, s_{10}\}$ (mengandung $s_{10}$ - Accept State)
+
+Tabel Transisi DFA yang terbentuk:
+
+| State DFA | Nama State Baru | Input `a` | Input `b` | Tipe State |
+|---|---|---|---|---|
+| $\{s_0, s_1, s_2, s_4, s_7\}$ | $q_0$ | $q_1$ | $q_2$ | Start |
+| $\{s_0, s_1, s_2, s_3, s_4, s_6, s_7, s_8\}$ | $q_1$ | $q_1$ | $q_3$ | Normal |
+| $\{s_0, s_1, s_2, s_4, s_5, s_6, s_7\}$ | $q_2$ | $q_1$ | $q_2$ | Normal |
+| $\{s_0, s_1, s_2, s_4, s_5, s_6, s_7, s_9\}$ | $q_3$ | $q_1$ | $q_4$ | Normal |
+| $\{s_0, s_1, s_2, s_4, s_5, s_6, s_7, s_{10}\}$ | $q_4$ | $q_1$ | $q_2$ | Accept |
+
+---
+
+### 4.3 Studi Kasus 3: Minimisasi DFA (Hopcroft's Algorithm)
+DFA hasil subset construction di atas diuji kevalidan minimisasinya dengan algoritma Hopcroft di simulator.
+
+**Proses Partisi State ($P$):**
+1. **Inisialisasi Partisi:** 
+   * Kelompok Accept State ($F$): $P_1 = \{q_4\}$
+   * Kelompok Non-Accept State ($Q \setminus F$): $P_2 = \{q_0, q_1, q_2, q_3\}$
+2. **Refinement Partisi:**
+   * Uji partisi $P_2$ dengan input `b`:
+     * $\delta(q_0, b) = q_2 \in P_2$
+     * $\delta(q_1, b) = q_3 \in P_2$
+     * $\delta(q_2, b) = q_2 \in P_2$
+     * $\delta(q_3, b) = q_4 \in P_1$ (Transisi berbeda kelas!)
+     * Maka, $q_3$ harus dikeluarkan dari partisi $P_2$. Partisi baru menjadi: $P_1 = \{q_4\}$, $P_2 = \{q_3\}$, $P_3 = \{q_0, q_1, q_2\}$.
+   * Uji partisi $P_3 = \{q_0, q_1, q_2\}$ dengan input `a` dan `b`:
+     * Melalui perhitungan fungsi transisi, didapatkan bahwa state $q_0$ dan $q_2$ memiliki perilaku transisi yang ekuivalen untuk semua alfabet.
+     * Maka $q_0$ dan $q_2$ digabungkan menjadi satu state minimal $\{q_{02}\}$.
+3. **Hasil Akhir DFA Minimal:**
+   Jumlah state berhasil direduksi dari 5 state menjadi 4 state minimal tanpa mengubah bahasa yang dikenali. Pengguna dapat langsung menekan tombol *"Apply Minimized"* di [MinimizePanel.tsx](file:///c:/Users/ACER/OneDrive/Dokumen/Automawow/src/components/panels/MinimizePanel.tsx) untuk merender ulang kanvas dengan DFA hasil minimisasi.
+
+---
+
+### 4.4 Studi Kasus 4: Simulasi String & Pengujian Ekuivalensi
+Aplikasi diuji untuk melakukan pelacakan pemrosesan string dan ekuivalensi graf:
+
+1. **Simulasi String Positif (Diterima):**
+   * **String Input:** `ababb`
+   * **Alur Trace Visual (Tape):**
+     * Mulai dari $q_0 \xrightarrow{a} q_1 \xrightarrow{b} q_3 \xrightarrow{a} q_1 \xrightarrow{b} q_3 \xrightarrow{b} q_4$ (Accept)
+     * Warna tape menyala hijau menandakan string diterima.
+2. **Simulasi String Negatif (Ditolak):**
+   * **String Input:** `ababa`
+   * **Alur Trace Visual:**
+     * Mulai dari $q_0 \xrightarrow{a} q_1 \xrightarrow{b} q_3 \xrightarrow{a} q_1 \xrightarrow{b} q_3 \xrightarrow{a} q_1$ (Normal - ditolak di akhir string)
+     * Warna tape menyala merah menandakan string ditolak.
+3. **Pengujian Ekuivalensi DFA:**
+   * Diuji DFA 1 hasil rancangan manual kelompok kami untuk regex `(a|b)*abb` berdampingan dengan DFA 2 hasil dari proses konversi otomatis program.
+   * Melalui panel [EquivalencePanel.tsx](file:///c:/Users/ACER/OneDrive/Dokumen/Automawow/src/components/panels/EquivalencePanel.tsx) dalam tampilan split-screen, algoritma BFS memeriksa kesesuaian transisi secara serentak.
+   * Program secara instan menampilkan dialog notifikasi kustom yang menyatakan bahwa kedua graf **Ekuivalen**, menunjukkan kecocokan logika mesin 100%.
 
 ---
 
