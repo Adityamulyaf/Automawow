@@ -2,6 +2,8 @@
 
 Interactive automata simulator for Theory of Computation. Built with React + TypeScript + Vite.
 
+**Live Demo:** [automawow.vercel.app](https://automawow.vercel.app)
+
 ## Features
 
 - **Visual graph editor** — add states, draw transitions, drag to reposition
